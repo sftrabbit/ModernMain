@@ -35,6 +35,7 @@ pre { margin-left: 32px; }
    <li>A <code>std::string</code> can represent any <abbr title="Null-Terminated Multi-Byte String">NTMBS</abbr> that might be passed as a program argument.</li>
    <li>Requiring the inclusion of <code>&lt;string&gt;</code> and <code>&lt;vector&gt;</code> is okay. Many programs will do it anyway, and those that do not want to can use the existing forms of <code>main</code>. Besides, <code>typeid</code> already leads the way on this front, requiring <code>&lt;typeinfo&gt;</code> to be included.</li>
    <li>Exceptions may be thrown during the construction of the <code>std::vector</code> and/or <code>std::string</code> but there is no way to catch them. The current idea to solve this problem is to extend <i>function-try-block</i>s to be able to catch parameter initialization exceptions in <code>main</code> only. At first I didn't think this was particularly elegant, but I like to think of it as a base case. Exceptions from parameter initialization are thrown in the calling function, but <code>main</code> doesn't have a calling function.</li>
+   <li>Freestanding implementations that do not include both <code>&lt;string&gt;</code> and <code>&lt;vector&gt;</code> in their implementation-defined set of libraries need not allow this definition of <code>main</code>.</li>
   </ul>
 
   <h2>Open questions</h2>
