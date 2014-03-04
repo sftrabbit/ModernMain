@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+ <head>
+  <title>Modern main</title>
+  <style>
+body { margin: 40px 60px; width: 800px; font-family: sans-serif; line-height: 1.4em }
+li { margin-bottom: 8px; }
+h2 { margin-top: 32px; }
+pre { margin-left: 32px; }
+  </style>
+ </head>
+ <body>
+  <header>
+   <h1>Modern <code>main</code></h1>
+   <dl>
+    <dt>Author:</dt> <dd>Joseph Mansfield, <a href="mailto:sftrabbit@gmail.com">sftrabbit@gmail.com</a></dd>
+   </dl>
+  </header>
+
+  <p>This proposal introduces an additional form of the <code>main</code> function that conforms to modern practices and uses types from the C++ standard library:</p>
+  <pre>int main(std::vector&lt;std::string&gt; args) { /* ... */ }</pre>
+  <p>This proposal refers to ISO/IEC 14882:2011 (C++11).</p>
+
+  <h2>Motivation</h2>
+  <ul>
+   <li>The existing forms of <code>main</code> have not evolved with the rest of C++. They have signatures that would be frowned upon in modern usage and style. A modern signature will be more consistent with modern code.</li>
+   <li>Learning about program arguments is often an early stage in C++ education and so requires the explanation of a lot of cruft: C-style strings, pointer arithmetic, the transformation of array type arguments to pointers, and the practice of passing an array size as an argument.</li>
+   <li>Many developers who prefer to use the standard library types already copy the program arguments to a <code>std::vector</code>. Introducing this form of <code>main</code> would avoid needing to perform that copy at the beginning of every program.</li>
+  </ul>
+
+  <h2>Design decisions</h2>
+  <ul>
+   <li>The existing forms of <code>main</code> should obviously remain for many reasons: backwards compatibility, easier conversion from C to C++, not wanting to use standard library components, free will, etc.</li>
+   <li><code>std::vector</code> is currently the most applicable container type: run-time sized, fast access, array-like interface, easily understood by newcomers. See <a href="#OpenQuestions">Open Questions</a> for more discussion.</li>
+   <li>A <code>std::string</code> can represent any <abbr title="Null-Terminated Multi-Byte String">NTMBS</abbr> that might be passed as a program argument.</li>
+   <li>Requiring the inclusion of <code>&lt;string&gt;</code> and <code>&lt;vector&gt;</code> is okay. Many programs will do it anyway, and those that do not want to can use the existing forms of <code>main</code>. Besides, <code>typeid</code> already leads the way on this front, requiring <code>&lt;typeinfo&gt;</code> to be included.</li>
+   <li>Exceptions may be thrown during the construction of the <code>std::vector</code> and/or <code>std::string</code> but there is no way to catch them. The current idea to solve this problem is to extend <i>function-try-block</i>s to be able to catch parameter initialization exceptions in <code>main</code> only. At first I didn't think this was particularly elegant, but I like to think of it as a base case. Exceptions from parameter initialization are thrown in the calling function, but <code>main</code> doesn't have a calling function.</li>
+  </ul>
+
+  <h2>Open questions</h2>
+  <ol>
+   <li>Perhaps a <code>std::dynarray</code> (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3820.html">N3820</a>) would be more appropriate than <code>std::vector</code>? It is a run-time fixed size container, which more closely mimics the array of <code>char*</code> in the existing forms of <code>main</code>. Note that <code>std::dynarray</code> does not (yet) provide a range constructor.</li>
+   <li>Is there a more elegant way to deal with exception handling? Is it possible to require that the construction of the parameters will not throw?</li>
+  </ol>
+
+  <h2>Example</h2>
+  <p>The following is a valid and well-defined program that prints the program arguments to the standard output:</p>
+  <pre>#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;iostream&gt;
+
+int main(std::vector&lt;std::string&gt; args)
+{
+	for (const auto&amp; arg : args) {
+		std::cout &lt;&lt; arg &lt;&lt; "\n";
+	}
+}</pre>
+
+  <h2>Proposed wording</h2>
+  <p>New paragraph after 3.6.1/2 [basic.start.main]:</p>
+  <blockquote>
+   <p>All hosted implementations, and freestanding implementations whose implementation-defined set of libraries include both <code>&lt;string&gt;</code> and <code>&lt;vector&gt;</code> shall allow the following definition of <code>main</code>:</p>
+   <pre>int main(std::vector&lt;std::string&gt; args) { /* ... */ }</pre>
+   <p>In this form <code>args</code> shall be initialized such that after initialization it contains the arguments passed to the program from the environment in which the program is run. The return value of <code>args.size()</code> shall be the number of arguments. If the number of arguments is nonzero, the arguments shall be supplied in <code>args[0]</code> through <code>args[args.size()-1]</code> as strings and <code>args[0]</code> shall be a string representing the name used to invoke the program or <code>""</code>. If the headers <code>&lt;string&gt;</code> and <code>&lt;vector&gt;</code> are not included prior to this definition of <code>main</code>, the program is ill-formed. [ <i>Note</i>: This definition of <code>main</code> will receive program arguments as <code>main_</code> does in the following program:</p>
+   <pre>#include &lt;string&gt;
+#include &lt;vector&gt;
+
+int main_(std::vector&lt;std::string&gt; args) { /* ... */ }
+
+int main(int argc, char* argv[])
+{
+	return main_({argv, argv + argc});
+}</pre>
+   <p>&mdash; <i>end note</i> ]</p>
+  </blockquote>
+  <p>New paragraph after 15/4 [except]:</p>
+  <blockquote>
+   <p>A <i>function-try-block</i> in the definition of the <code>main</code> function additionally associates the <i>handler-seq</i> with the initialization of the functions parameters. An exception thrown during the initialization of a parameter transfers control to the associated handler. [ <i>Example:</i></p>
+   <pre>int main(std::vector&lt;std::string&gt; args)
+try {
+	// body of main
+}
+catch (...) {
+	// handles exceptions thrown when initializing args
+}</pre>
+  </blockquote>
+ </body>
+</html>
